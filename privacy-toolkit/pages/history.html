@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Monitor — History</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#07070f;color:#e2e8f0;font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;min-height:100vh}
+
+  .top{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);border-bottom:1px solid #1e2035;padding:20px 32px;display:flex;align-items:center;gap:16px}
+  .top-icon{font-size:28px}
+  .top-title{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.4px}
+  .top-sub{font-size:11px;color:#374151;margin-top:2px}
+  .top-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .btn{font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;border:1px solid}
+  .btn-danger{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.25);color:#fca5a5}
+  .btn-danger:hover{background:rgba(239,68,68,0.2)}
+
+  .stats-bar{display:flex;gap:0;border-bottom:1px solid #111120}
+  .stat{flex:1;padding:16px 24px;border-right:1px solid #111120;text-align:center}
+  .stat:last-child{border-right:none}
+  .stat-num{font-size:26px;font-weight:800;line-height:1}
+  .stat-label{font-size:10px;color:#4b5563;margin-top:3px;letter-spacing:0.05em;text-transform:uppercase}
+
+  .filters{padding:14px 32px;display:flex;gap:8px;border-bottom:1px solid #0f0f1e}
+  .filter-btn{font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:inherit;border:1px solid #1e2035;background:transparent;color:#4b5563}
+  .filter-btn.active{background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.3);color:#93c5fd}
+  .search{margin-left:auto;background:#0d0d18;border:1px solid #1e2035;border-radius:6px;color:#e2e8f0;font-family:inherit;font-size:11px;padding:5px 10px;outline:none;width:180px}
+  .search:focus{border-color:#3b82f6}
+
+  .sites-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1px;background:#0f0f1e;padding:1px}
+  .site-card{background:#080810;padding:16px;cursor:pointer;transition:background 0.15s}
+  .site-card:hover{background:#0d0d1a}
+  .site-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .site-score-badge{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;border:2px solid}
+  .site-name{font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+  .site-date{font-size:10px;color:#374151;margin-top:1px}
+  .site-pills{display:flex;gap:5px;flex-wrap:wrap}
+  .pill{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600}
+  .pill-red{background:rgba(239,68,68,0.15);color:#fca5a5}
+  .pill-amber{background:rgba(245,158,11,0.15);color:#fde68a}
+  .pill-purple{background:rgba(168,85,247,0.15);color:#d8b4fe}
+  .pill-blue{background:rgba(59,130,246,0.15);color:#93c5fd}
+  .pill-green{background:rgba(34,197,94,0.15);color:#86efac}
+  .pill-gray{background:rgba(100,116,139,0.15);color:#94a3b8}
+
+  .empty-state{padding:80px 32px;text-align:center;color:#1f2937}
+  .empty-state-icon{font-size:48px;margin-bottom:16px;opacity:0.4}
+  .empty-state-text{font-size:14px}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:none;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#0d0d18;border:1px solid #1e2035;border-radius:14px;width:500px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column}
+  .modal-head{padding:16px 20px;border-bottom:1px solid #1e2035;display:flex;align-items:center;justify-content:space-between}
+  .modal-title{font-size:15px;font-weight:700;color:#fff}
+  .modal-close{background:none;border:none;color:#4b5563;font-size:18px;cursor:pointer}
+  .modal-close:hover{color:#9ca3af}
+  .modal-body{overflow-y:auto;padding:16px 20px;flex:1}
+  .modal-score-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #1e2035}
+  .modal-score-num{font-size:36px;font-weight:800}
+  .finding-group{margin-bottom:14px}
+  .finding-group-title{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#374151;margin-bottom:6px}
+  .finding-item{padding:6px 0;border-bottom:1px solid #0d0d18;display:flex;justify-content:space-between;align-items:center;font-size:11px}
+  .finding-item:last-child{border-bottom:none}
+  .finding-item-name{color:#94a3b8}
+  .finding-item-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-icon">🛡️</div>
+  <div>
+    <div class="top-title">Privacy History</div>
+    <div class="top-sub">All sites analysed this session · DPDPA 2023 · India Edition</div>
+  </div>
+  <div class="top-right">
+    <button class="btn btn-danger" id="clearAllBtn">🗑 Clear All</button>
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat"><div class="stat-num" id="statSites">—</div><div class="stat-label">Sites</div></div>
+  <div class="stat"><div class="stat-num" id="statTrackers" style="color:#ef4444">—</div><div class="stat-label">Trackers</div></div>
+  <div class="stat"><div class="stat-num" id="statLeaks" style="color:#f59e0b">—</div><div class="stat-label">Leaks</div></div>
+  <div class="stat"><div class="stat-num" id="statAvgScore">—</div><div class="stat-label">Avg Score</div></div>
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="risky">Risky (< 60)</button>
+  <button class="filter-btn" data-filter="trackers">Has Trackers</button>
+  <button class="filter-btn" data-filter="leaks">Has Leaks</button>
+  <button class="filter-btn" data-filter="darkpatterns">Dark Patterns</button>
+  <input class="search" id="searchBox" placeholder="Search sites…" type="text">
+</div>
+
+<div class="sites-grid" id="sitesGrid">
+  <div class="empty-state" style="grid-column:1/-1">
+    <div class="empty-state-icon">🛡️</div>
+    <div class="empty-state-text">Loading…</div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="modalTitle">Site Details</span>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const FINDING_TYPE = { TRACKER:'tracker', LEAK:'leak', DARK_PATTERN:'dark_pattern', FINGERPRINT:'fingerprint', COOKIE:'cookie' };
+
+let allSites = {};
+let currentFilter = 'all';
+let searchQuery = '';
+
+function scoreColor(s) {
+  if (s >= 80) return '#22c55e';
+  if (s >= 60) return '#f59e0b';
+  if (s >= 40) return '#ef4444';
+  return '#a855f7';
+}
+function scoreGrade(s) {
+  if (s >= 80) return 'A'; if (s >= 60) return 'B'; if (s >= 40) return 'C'; if (s >= 20) return 'D'; return 'F';
+}
+function timeAgo(ts) {
+  const d = Date.now() - ts;
+  if (d < 60000) return 'just now';
+  if (d < 3600000) return Math.floor(d/60000) + 'm ago';
+  if (d < 86400000) return Math.floor(d/3600000) + 'h ago';
+  return Math.floor(d/86400000) + 'd ago';
+}
+
+function renderStats(sites) {
+  const arr = Object.values(sites);
+  const totalTrackers = arr.reduce((s,r) => s + r.findings.filter(f=>f.type===FINDING_TYPE.TRACKER).length, 0);
+  const totalLeaks = arr.reduce((s,r) => s + r.findings.filter(f=>f.type===FINDING_TYPE.LEAK).length, 0);
+  const avgScore = arr.length ? Math.round(arr.reduce((s,r)=>s+r.score,0)/arr.length) : 100;
+  document.getElementById('statSites').textContent = arr.length;
+  document.getElementById('statTrackers').textContent = totalTrackers;
+  document.getElementById('statLeaks').textContent = totalLeaks;
+  const el = document.getElementById('statAvgScore');
+  el.textContent = avgScore;
+  el.style.color = scoreColor(avgScore);
+}
+
+function filterSites(sites) {
+  return Object.values(sites).filter(r => {
+    if (searchQuery && !r.hostname.includes(searchQuery)) return false;
+    if (currentFilter === 'risky') return r.score < 60;
+    if (currentFilter === 'trackers') return r.findings.some(f=>f.type===FINDING_TYPE.TRACKER);
+    if (currentFilter === 'leaks') return r.findings.some(f=>f.type===FINDING_TYPE.LEAK);
+    if (currentFilter === 'darkpatterns') return r.findings.some(f=>f.type===FINDING_TYPE.DARK_PATTERN);
+    return true;
+  }).sort((a,b) => a.score - b.score);
+}
+
+function renderCard(record) {
+  const s = record.score;
+  const color = scoreColor(s);
+  const grade = scoreGrade(s);
+  const trackers = record.findings.filter(f=>f.type===FINDING_TYPE.TRACKER);
+  const leaks    = record.findings.filter(f=>f.type===FINDING_TYPE.LEAK);
+  const dps      = record.findings.filter(f=>f.type===FINDING_TYPE.DARK_PATTERN);
+  const fps      = record.findings.filter(f=>f.type===FINDING_TYPE.FINGERPRINT);
+
+  const pills = [
+    trackers.length ? `<span class="pill pill-red">📡 ${trackers.length} tracker${trackers.length>1?'s':''}</span>` : '',
+    leaks.length    ? `<span class="pill pill-amber">⚠️ ${leaks.length} leak${leaks.length>1?'s':''}</span>` : '',
+    dps.length      ? `<span class="pill pill-purple">🎭 ${dps.length} dark pattern${dps.length>1?'s':''}</span>` : '',
+    fps.length      ? `<span class="pill pill-blue">👁️ ${fps.length} fingerprint${fps.length>1?'s':''}</span>` : '',
+    (!trackers.length && !leaks.length && !dps.length && !fps.length) ? `<span class="pill pill-green">✓ Clean</span>` : '',
+  ].join('');
+
+  const div = document.createElement('div');
+  div.className = 'site-card';
+  div.innerHTML = `
+    <div class="site-card-top">
+      <div class="site-score-badge" style="color:${color};border-color:${color};background:${color}18">${grade}</div>
+      <div style="flex:1;min-width:0">
+        <div class="site-name">${record.hostname}</div>
+        <div class="site-date">Score ${s}/100 · ${timeAgo(record.lastVisit)}</div>
+      </div>
+    </div>
+    <div class="site-pills">${pills}</div>`;
+  div.addEventListener('click', () => openModal(record));
+  return div;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('sitesGrid');
+  const filtered = filterSites(allSites);
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No sites match this filter.</div></div>`;
+    return;
+  }
+  grid.innerHTML = '';
+  filtered.forEach(r => grid.appendChild(renderCard(r)));
+}
+
+function openModal(record) {
+  document.getElementById('modalTitle').textContent = record.hostname;
+  const s = record.score;
+  const color = scoreColor(s);
+  const trackers = record.findings.filter(f=>f.type===FINDING_TYPE.TRACKER);
+  const leaks    = record.findings.filter(f=>f.type===FINDING_TYPE.LEAK);
+  const dps      = record.findings.filter(f=>f.type===FINDING_TYPE.DARK_PATTERN);
+  const fps      = record.findings.filter(f=>f.type===FINDING_TYPE.FINGERPRINT);
+
+  function group(title, items, renderItem) {
+    if (!items.length) return '';
+    return `<div class="finding-group">
+      <div class="finding-group-title">${title} (${items.length})</div>
+      ${items.map(renderItem).join('')}
+    </div>`;
+  }
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-score-row">
+      <div class="modal-score-num" style="color:${color}">${s}</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:${color}">${scoreGrade(s)} Grade</div>
+        <div style="font-size:11px;color:#4b5563">Last visited ${timeAgo(record.lastVisit)}</div>
+        ${record.cookieAudit ? `<div style="font-size:11px;margin-top:4px;color:${record.cookieAudit.verdict==='fail'?'#fca5a5':record.cookieAudit.verdict==='partial'?'#fde68a':'#86efac'}">Cookie audit: ${record.cookieAudit.verdict.toUpperCase()}</div>` : ''}
+      </div>
+    </div>
+    ${group('Trackers', trackers, f => `
+      <div class="finding-item">
+        <span class="finding-item-name">${f.detail?.name||'?'} <span style="color:#374151">(${f.detail?.cat||''})</span></span>
+        <span class="finding-item-badge ${f.detail?.risk==='high'?'pill-red':'pill-amber'}">${f.detail?.risk||'?'}</span>
+      </div>`)}
+    ${group('Form Leaks', leaks, f => `
+      <div class="finding-item">
+        <span class="finding-item-name">${f.detail?.fieldId||'field'} → ${f.detail?.domain||'?'}</span>
+        <span class="finding-item-badge ${f.detail?.thirdParty?'pill-red':'pill-amber'}">${f.detail?.thirdParty?'3rd party':'same domain'}</span>
+      </div>`)}
+    ${group('Dark Patterns', dps, f => `
+      <div class="finding-item">
+        <span class="finding-item-name">${f.detail?.name||'?'}</span>
+        <span class="finding-item-badge ${f.severity==='critical'?'pill-red':'pill-amber'}">${f.severity}</span>
+      </div>`)}
+    ${group('Fingerprinting', fps, f => `
+      <div class="finding-item">
+        <span class="finding-item-name">${f.detail?.kind||'?'} (${f.detail?.method||''})</span>
+        <span class="finding-item-badge pill-blue">detected</span>
+      </div>`)}
+    ${!trackers.length && !leaks.length && !dps.length && !fps.length ? '<div style="color:#2d3748;font-style:italic;font-size:12px;padding:20px 0;text-align:center">No issues detected on this site.</div>' : ''}
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+document.getElementById('modalClose').addEventListener('click', () => {
+  document.getElementById('modalOverlay').classList.remove('open');
+});
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('open');
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderGrid();
+  });
+});
+
+document.getElementById('searchBox').addEventListener('input', e => {
+  searchQuery = e.target.value.trim().toLowerCase();
+  renderGrid();
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (!confirm('Clear all privacy history? This cannot be undone.')) return;
+  chrome.runtime.sendMessage({ type: 'CLEAR_ALL' }, () => {
+    allSites = {};
+    renderStats(allSites);
+    renderGrid();
+  });
+});
+
+function load() {
+  chrome.runtime.sendMessage({ type: 'GET_ALL_DATA' }, (sites) => {
+    allSites = sites || {};
+    renderStats(allSites);
+    if (!Object.keys(allSites).length) {
+      document.getElementById('sitesGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">No sites analysed yet. Browse a few websites and come back.</div></div>`;
+      return;
+    }
+    renderGrid();
+  });
+}
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
