@@ -1,8 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Privacy Monitor â€” History</title>
+<title>Privacy Monitor — History</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#07070f;color:#e2e8f0;font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;min-height:100vh}
@@ -23,7 +23,7 @@
   .stat-num{font-size:26px;font-weight:800;line-height:1}
   .stat-label{font-size:10px;color:#374151;margin-top:3px;letter-spacing:.05em;text-transform:uppercase}
 
-  /* Cross-site tracker banner â€” THE KEY FEATURE */
+  /* Cross-site tracker banner — THE KEY FEATURE */
   .cross-site-section{padding:20px 32px;border-bottom:1px solid #111120;background:rgba(239,68,68,0.04)}
   .cross-title{font-size:12px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
   .cross-empty{font-size:13px;color:#2d3748;font-style:italic;padding:8px 0}
@@ -88,26 +88,26 @@
 <body>
 
 <div class="top">
-  <div class="top-icon">ðŸ›¡ï¸</div>
+  <div class="top-icon">🛡️</div>
   <div>
     <div class="top-title">Privacy History</div>
-    <div class="top-sub">Cross-site tracking analysis Â· DPDPA 2023 Â· India Edition</div>
+    <div class="top-sub">Cross-site tracking analysis · DPDPA 2023 · India Edition</div>
   </div>
   <div class="top-right">
-    <button class="btn btn-danger" id="clearAllBtn">ðŸ—‘ Clear All</button>
+    <button class="btn btn-danger" id="clearAllBtn">🗑 Clear All</button>
   </div>
 </div>
 
 <div class="stats-bar">
-  <div class="stat"><div class="stat-num" id="statSites">â€”</div><div class="stat-label">Sites Visited</div></div>
-  <div class="stat"><div class="stat-num" id="statTrackers" style="color:#ef4444">â€”</div><div class="stat-label">Total Trackers</div></div>
-  <div class="stat"><div class="stat-num" id="statCross" style="color:#a855f7">â€”</div><div class="stat-label">Cross-Site</div></div>
-  <div class="stat"><div class="stat-num" id="statAvg">â€”</div><div class="stat-label">Avg Score</div></div>
+  <div class="stat"><div class="stat-num" id="statSites">—</div><div class="stat-label">Sites Visited</div></div>
+  <div class="stat"><div class="stat-num" id="statTrackers" style="color:#ef4444">—</div><div class="stat-label">Total Trackers</div></div>
+  <div class="stat"><div class="stat-num" id="statCross" style="color:#a855f7">—</div><div class="stat-label">Cross-Site</div></div>
+  <div class="stat"><div class="stat-num" id="statAvg">—</div><div class="stat-label">Avg Score</div></div>
 </div>
 
 <!-- CROSS-SITE TRACKER SECTION -->
 <div class="cross-site-section">
-  <div class="cross-title">ðŸ‘ï¸ Who followed you across sites</div>
+  <div class="cross-title">👁️ Who followed you across sites</div>
   <div id="crossSiteContent"><div class="cross-empty">Visit 3+ sites to see cross-site tracking analysis.</div></div>
 </div>
 
@@ -117,18 +117,18 @@
   <button class="filter-btn" data-filter="trackers">Has Trackers</button>
   <button class="filter-btn" data-filter="leaks">Has Leaks</button>
   <button class="filter-btn" data-filter="darkpatterns">Dark Patterns</button>
-  <input class="search" id="searchBox" placeholder="Search sitesâ€¦" type="text">
+  <input class="search" id="searchBox" placeholder="Search sites..." type="text">
 </div>
 
 <div class="sites-grid" id="sitesGrid">
-  <div class="empty-state"><div class="empty-icon">ðŸ›¡ï¸</div><div>Loadingâ€¦</div></div>
+  <div class="empty-state"><div class="empty-icon">🛡️</div><div>Loading…</div></div>
 </div>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title" id="modalTitle">Site Details</span>
-      <button class="modal-close" id="modalClose">âœ•</button>
+      <button class="modal-close" id="modalClose">✕</button>
     </div>
     <div class="modal-body" id="modalBody"></div>
   </div>

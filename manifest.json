@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Privacy Monitor — India Edition",
+  "name": "Privacy Monitor - India Edition",
   "version": "2.0.0",
   "description": "Real-time privacy auditing: trackers, fingerprinting, form leaks, dark patterns, cookie consent. Block trackers. DPDPA 2023 aligned.",
   "permissions": [

@@ -208,8 +208,8 @@ function renderMain(record) {
             <span class="f-name">${f.detail?.name||'?'}</span>
             <span class="pill ${f.severity==='critical'?'pill-red':'pill-amber'}">${f.severity}</span>
           </div>
-          <div class="f-explain">${f.detail?.message || f.detail?.preview || ''}</div>
-          <div class="f-meta"><span>${f.detail?.preview||''}</span></div>
+          <div class="f-dp-msg">${f.detail?.message || ''}</div>
+          <div class="f-meta"><span style="color:#4b5563">Found: &ldquo;${(f.detail?.preview||'').slice(0,55)}${(f.detail?.preview||'').length>55?'…':''}&rdquo;</span></div>
         </div>`, 'pill-purple')}
       ${renderSection('Fingerprinting', fps, f=>`
         <div class="f-row">

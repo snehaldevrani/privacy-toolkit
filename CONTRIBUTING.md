@@ -1,21 +1,15 @@
-# Contributing to Privacy Monitor
-
-We're thrilled you want to help make the internet more private! Here's how:
-
-## Code of Conduct
-
-Be respectful, inclusive, and privacy-focused. No harassment, hate speech, or discrimination.
+﻿# Contributing to Privacy Monitor
 
 ## Ways to Contribute
 
 ### 1. Report Issues
-Found a tracker we missed? Privacy false alarm? File an issue:
-- Title: Clear description
-- Description: What page, what happened, expected vs actual
-- Environment: OS, browser version, extension version
+Found a tracker we missed, or a false alarm? File an issue with:
+- A clear title
+- What page you were on, what happened, what you expected
+- Your OS, browser version, extension version
 
 ### 2. Add Tracker Detection
-Spotted a new tracker? Add it to `modules/trackerDB.js`:
+Add new entries to `modules/trackerDB.js`:
 
 ```javascript
 {
@@ -24,149 +18,80 @@ Spotted a new tracker? Add it to `modules/trackerDB.js`:
   blockDomains: ['tracking.co'],
   risk: 'high',  // 'high' or 'medium'
   cat: 'Analytics',
-  dpdpa: false,  // Does it violate DPDPA?
-  plainEnglish: 'TrackingCo is following you...',
+  dpdpa: false,
+  plainEnglish: 'TrackingCo records your activity on this site.',
 }
 ```
 
-**Requirements:**
-- Evidence of tracking (screenshot, network request)
+Requirements before submitting:
+- Evidence of tracking (screenshot or network request)
 - Domain names confirmed
-- Plain English description clear & accurate
+- Plain English description is accurate and clear
 
-### 3. Improve Detection
-Add new detection patterns to `content.js`:
+### 3. Improve Detection Logic
+Add new patterns to `content.js`:
 - Form leak detection
 - Fingerprinting scripts
 - Dark patterns
 - Cookie violations
 
 ### 4. Translation
-Help translate to Hindi, Tamil, Telugu, Kannada, Malayalam:
-- UI strings
-- Tracker descriptions
-- Plain English explanations
-- DPDPA guidance
+Help translate UI strings and tracker descriptions to Hindi, Tamil, Telugu, Kannada, or Malayalam.
 
 ### 5. Testing
-- Test on different sites
-- Test with different browsers
+- Test on different sites and browsers
 - Test blocking features
-- Test history dashboard
+- Test the history dashboard
 - Report edge cases
 
 ### 6. Documentation
-- Improve README
-- Add tutorials
-- Create video guides
-- Document API
+Improve README, add tutorials, or document new APIs.
 
 ## Development Setup
 
-```bash
-# Clone repo
-git clone https://github.com/yourusername/privacy-monitor.git
-cd privacy-monitor
-
-# Load in Chrome
-1. chrome://extensions/
-2. Developer mode ON
-3. Load unpacked → select this folder
+```
+1. git clone https://github.com/snehaldevrani/privacy-toolkit.git
+2. cd privacy-monitor
+3. Open chrome://extensions/
+4. Enable Developer mode
+5. Click "Load unpacked" and select this folder
 ```
 
-## Testing Your Changes
+## Testing Changes
 
-1. Make changes
-2. Reload extension (chrome://extensions → Reload button)
-3. Test on websites
-4. Check console for errors (F12)
-5. Verify no performance issues
+1. Make your change
+2. Reload extension (chrome://extensions -> Reload)
+3. Test on relevant websites
+4. Check console for errors (F12 -> Console)
+5. Verify no performance regression
 
 ## Pull Request Process
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/tracker-xyz`
-3. Make changes
-4. Test thoroughly
-5. Commit with clear message: `Add TrackingCo to tracker DB`
-6. Push to your fork
-7. Create Pull Request with:
-   - Clear title
-   - Description of changes
-   - Why this matters
-   - Testing confirmation
-   - Screenshots if UI changes
-
-## Coding Standards
-
-### JavaScript
-```javascript
-// Use descriptive names
-const isTracker = domain.includes('track');
-
-// Add comments for complex logic
-// Calculate penalty based on risk level
-const penalty = f.detail?.risk === 'high' ? 15 : 10;
-
-// Handle errors gracefully
-try {
-  const data = JSON.parse(json);
-} catch (e) {
-  console.warn('Parse error:', e);
-}
-```
-
-### Comments
-```javascript
-// ── Section headers ────────────────────────────────
-// Regular comments for code explanation
-// TODO: improvements
-// FIXME: known issues
-```
-
-## India-Specific Guidance
-
-Since this is India-focused:
-- Reference DPDPA 2023, not just GDPR
-- Test with India-specific trackers (CleverTap, WebEngage, etc.)
-- Use Indian examples in docs
-- Link to Indian privacy resources
-- Consider data sovereignty issues
+2. Create a feature branch: `git checkout -b add-tracker-xyz`
+3. Make and test your changes
+4. Commit with a clear message: `Add TrackingCo to tracker DB`
+5. Push and open a Pull Request with:
+   - A clear title and description
+   - Confirmation that you tested the change
+   - Screenshots for UI changes
 
 ## Tracker Database Standards
 
-For new trackers, include:
+For each new tracker entry, provide:
+1. Confirmed tracking evidence (privacy policy link or network capture)
+2. Correct block domains (only domains doing the tracking, not CDNs)
+3. Plain English description a non-technical user can understand
+4. Correct risk level: High (data sold/profiled) vs Medium (analytics only)
+5. Category: Analytics, Ad Network, Session Recorder, CRM, etc.
+6. DPDPA status: does it raise issues under India's data privacy law?
 
-1. **Confirmed tracking**: Link to tracker's privacy policy OR network evidence
-2. **Block domains**: Which domains actually do tracking (vs delivery networks)
-3. **Plain English**: Non-technical users should understand the risk
-4. **Risk level**: High (selling data) vs Medium (analytics only)
-5. **Category**: Analytics, Ad Network, Session Recorder, CRM, etc.
-6. **DPDPA status**: Does it violate India's privacy law?
+## India-Specific Notes
 
-## Privacy Standards
+- Reference DPDPA 2023, not only GDPR, when describing legal implications
+- Test with India-specific trackers (CleverTap, WebEngage, InMobi, etc.)
+- Link to Indian privacy resources where relevant
 
-Remember: **This extension protects privacy. Your contributions should too.**
+## Code of Conduct
 
-- Don't collect user data
-- Don't add telemetry without explicit opt-in
-- Test that no data leaves users' devices
-- Respect user consent
-- Be transparent about what you detect
-
-## Recognition
-
-Contributors are recognized in:
-- README.md
-- GitHub releases
-- Twitter acknowledgments
-
-## Questions?
-
-- Open a discussion
-- Email: hello@privacymonitor.in
-- Twitter: @PrivacyMonitor
-
----
-
-**Together, let's make privacy the default.**
+Be respectful and inclusive. No harassment, hate speech, or discrimination.
