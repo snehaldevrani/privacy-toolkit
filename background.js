@@ -1,19 +1,40 @@
-// background.js — Service Worker (Manifest V3)
-// Owns ALL state. Intercepts network via webRequest. Receives findings from content.js.
+// background.js — Service Worker v2
+// New in v2: declarativeNetRequest blocking, cookie clearing, cross-site tracker counting
 
 import { matchTracker, SCORE_WEIGHTS } from './modules/trackerDB.js';
 import { MSG, FINDING_TYPE, SEV, makeFinding, makeSiteRecord } from './modules/dataModel.js';
 
 // ── State ──────────────────────────────────────────────────────────────────
-const STATE = { sites: {}, cookieBaselines: {} };
+const STATE = {
+  sites: {},
+  cookieBaselines: {},
+  blockedTrackers: new Set(),   // tracker names currently blocked
+  blockRuleIds: new Map(),      // trackerName → [ruleId, ...]
+};
+
+let nextRuleId = 1000;
 
 async function loadState() {
-  const data = await chrome.storage.local.get('pm_sites');
+  const data = await chrome.storage.local.get(['pm_sites','pm_blocked','pm_blockRuleIds','pm_nextRuleId']);
   if (data.pm_sites) STATE.sites = data.pm_sites;
+  if (data.pm_blocked) {
+    data.pm_blocked.forEach(name => STATE.blockedTrackers.add(name));
+  }
+  if (data.pm_blockRuleIds) {
+    STATE.blockRuleIds = new Map(Object.entries(data.pm_blockRuleIds));
+  }
+  if (data.pm_nextRuleId) {
+    nextRuleId = data.pm_nextRuleId;
+  }
 }
 
 async function saveState() {
-  await chrome.storage.local.set({ pm_sites: STATE.sites });
+  await chrome.storage.local.set({
+    pm_sites: STATE.sites,
+    pm_blocked: [...STATE.blockedTrackers],
+    pm_blockRuleIds: Object.fromEntries(STATE.blockRuleIds),
+    pm_nextRuleId: nextRuleId,
+  });
 }
 
 function getSiteRecord(hostname) {
@@ -27,7 +48,7 @@ function recalcScore(record) {
   let penalty = 0;
   const seen = new Set();
   record.findings.forEach(f => {
-    const key = f.type + ':' + (f.detail?.name || f.detail?.fieldId || f.detail?.kind || f.detail?.name || '?');
+    const key = f.type + ':' + (f.detail?.name || f.detail?.fieldId || f.detail?.kind || '?');
     if (seen.has(key)) return;
     seen.add(key);
     switch (f.type) {
@@ -38,7 +59,7 @@ function recalcScore(record) {
       case FINDING_TYPE.DARK_PATTERN:
         penalty += f.severity === SEV.CRITICAL ? SCORE_WEIGHTS.darkpattern_critical : SCORE_WEIGHTS.darkpattern_warning; break;
       case FINDING_TYPE.FINGERPRINT:
-        penalty += ({ canvas: SCORE_WEIGHTS.fingerprint_canvas, webgl: SCORE_WEIGHTS.fingerprint_webgl, font: SCORE_WEIGHTS.fingerprint_font })[f.detail?.kind] || 10; break;
+        penalty += ({canvas:SCORE_WEIGHTS.fingerprint_canvas,webgl:SCORE_WEIGHTS.fingerprint_webgl,font:SCORE_WEIGHTS.fingerprint_font})[f.detail?.kind] || 10; break;
       case FINDING_TYPE.COOKIE:
         penalty += f.detail?.verdict === 'fail' ? SCORE_WEIGHTS.cookie_fail : SCORE_WEIGHTS.cookie_partial; break;
     }
@@ -71,15 +92,13 @@ async function updateBadge(hostname, record) {
     const tabHost = new URL(tab.url).hostname.replace(/^www\./, '');
     if (tabHost !== hostname) return;
   } catch { return; }
-
   const score = record.score;
   const count = record.findings.length;
   let color, text;
   if (score >= 80)      { color = '#22c55e'; text = '✓'; }
-  else if (score >= 60) { color = '#f59e0b'; text = String(Math.min(count, 99)); }
-  else if (score >= 40) { color = '#ef4444'; text = String(Math.min(count, 99)); }
+  else if (score >= 60) { color = '#f59e0b'; text = String(Math.min(count,99)); }
+  else if (score >= 40) { color = '#ef4444'; text = String(Math.min(count,99)); }
   else                  { color = '#7c3aed'; text = '!!'; }
-
   chrome.action.setBadgeText({ text, tabId: tab.id });
   chrome.action.setBadgeBackgroundColor({ color, tabId: tab.id });
 }
@@ -92,9 +111,8 @@ chrome.webRequest.onBeforeRequest.addListener(
     if (!tracker) return;
     chrome.tabs.get(details.tabId, (tab) => {
       if (chrome.runtime.lastError || !tab?.url) return;
-      let pageHost;
+      let pageHost, reqHost;
       try { pageHost = new URL(tab.url).hostname.replace(/^www\./, ''); } catch { return; }
-      let reqHost;
       try { reqHost = new URL(details.url).hostname.replace(/^www\./, ''); } catch { return; }
       if (reqHost === pageHost || reqHost.endsWith('.' + pageHost)) return;
 
@@ -102,7 +120,9 @@ chrome.webRequest.onBeforeRequest.addListener(
         FINDING_TYPE.TRACKER,
         tracker.risk === 'high' ? SEV.CRITICAL : SEV.WARNING,
         pageHost,
-        { name: tracker.name, cat: tracker.cat, risk: tracker.risk, dpdpa: tracker.dpdpa, url: details.url }
+        { name: tracker.name, cat: tracker.cat, risk: tracker.risk, dpdpa: tracker.dpdpa,
+          plainEnglish: tracker.plainEnglish, url: details.url,
+          blockDomains: tracker.blockDomains }
       );
       const isNew = addFinding(pageHost, finding);
       if (isNew) {
@@ -112,6 +132,96 @@ chrome.webRequest.onBeforeRequest.addListener(
   },
   { urls: ['<all_urls>'] }
 );
+
+// ── declarativeNetRequest — Block a tracker ────────────────────────────────
+async function blockTracker(trackerName, blockDomains) {
+  if (STATE.blockedTrackers.has(trackerName)) return { ok: true, alreadyBlocked: true };
+
+  const rules = blockDomains.map(domain => ({
+    id: nextRuleId++,
+    priority: 1,
+    action: { type: 'block' },
+    condition: {
+      urlFilter: `*${domain}*`,
+      resourceTypes: ['script','xmlhttprequest','image','sub_frame','stylesheet','font','media','websocket','other'],
+    },
+  }));
+
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      addRules: rules,
+      removeRuleIds: [],
+    });
+    STATE.blockedTrackers.add(trackerName);
+    STATE.blockRuleIds.set(trackerName, rules.map(r => r.id));
+    saveState();
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function unblockTracker(trackerName) {
+  if (!STATE.blockedTrackers.has(trackerName)) return { ok: true };
+  const ruleIds = STATE.blockRuleIds.get(trackerName) || [];
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      addRules: [],
+      removeRuleIds: ruleIds,
+    });
+    STATE.blockedTrackers.delete(trackerName);
+    STATE.blockRuleIds.delete(trackerName);
+    saveState();
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// ── Cookie clearing ────────────────────────────────────────────────────────
+async function clearTrackerCookies(blockDomains) {
+  let cleared = 0;
+  for (const domain of blockDomains) {
+    const cookies = await chrome.cookies.getAll({ domain });
+    for (const cookie of cookies) {
+      const url = `http${cookie.secure?'s':''}://${cookie.domain.replace(/^\./,'')}${cookie.path}`;
+      try {
+        await chrome.cookies.remove({ url, name: cookie.name });
+        cleared++;
+      } catch {}
+    }
+  }
+  return { ok: true, cleared };
+}
+
+// ── Cross-site tracker analysis ────────────────────────────────────────────
+function getCrossSiteTrackers() {
+  const sites = Object.values(STATE.sites);
+  if (sites.length < 2) return [];
+
+  // Count how many sites each tracker appeared on
+  const trackerSites = {}; // trackerName → Set of hostnames
+  sites.forEach(record => {
+    record.findings
+      .filter(f => f.type === FINDING_TYPE.TRACKER)
+      .forEach(f => {
+        const name = f.detail?.name;
+        if (!name) return;
+        if (!trackerSites[name]) trackerSites[name] = new Set();
+        trackerSites[name].add(record.hostname);
+      });
+  });
+
+  return Object.entries(trackerSites)
+    .filter(([_, sitesSet]) => sitesSet.size > 1)
+    .map(([name, sitesSet]) => ({
+      name,
+      siteCount: sitesSet.size,
+      totalSites: sites.length,
+      sites: [...sitesSet],
+    }))
+    .sort((a, b) => b.siteCount - a.siteCount);
+}
 
 // ── Cookie Audit ───────────────────────────────────────────────────────────
 async function snapshotCookies(hostname) {
@@ -129,19 +239,12 @@ async function runCookieAudit(hostname) {
   const trackingRe = /^(_ga|gtm|_gid|amplitude|mixpanel|hotjar|clarity|fbp|_fbq|cto_|__utm)/i;
   const newTracking = newCookies.filter(k => trackingRe.test(k));
   delete STATE.cookieBaselines[hostname];
-
   const verdict = newTracking.length > 0 ? 'fail' : newCookies.length > 0 ? 'partial' : 'pass';
   const auditResult = { verdict, newTracking, newAll: newCookies, ts: Date.now() };
   const record = getSiteRecord(hostname);
   record.cookieAudit = auditResult;
-
   if (verdict !== 'pass') {
-    addFinding(hostname, makeFinding(
-      FINDING_TYPE.COOKIE,
-      verdict === 'fail' ? SEV.CRITICAL : SEV.WARNING,
-      hostname,
-      auditResult
-    ));
+    addFinding(hostname, makeFinding(FINDING_TYPE.COOKIE, verdict==='fail'?SEV.CRITICAL:SEV.WARNING, hostname, auditResult));
   }
   saveState();
   return auditResult;
@@ -166,7 +269,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     }
     case MSG.GET_ALL_DATA: {
-      sendResponse(STATE.sites);
+      sendResponse({
+        sites: STATE.sites,
+        crossSiteTrackers: getCrossSiteTrackers(),
+        blockedTrackers: [...STATE.blockedTrackers],
+      });
       break;
     }
     case MSG.COOKIE_BASELINE: {
@@ -181,6 +288,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!hostname) { sendResponse({ ok: false }); return; }
       runCookieAudit(hostname).then(sendResponse);
       return true;
+    }
+    case 'BLOCK_TRACKER': {
+      blockTracker(msg.trackerName, msg.blockDomains).then(sendResponse);
+      return true;
+    }
+    case 'UNBLOCK_TRACKER': {
+      unblockTracker(msg.trackerName).then(sendResponse);
+      return true;
+    }
+    case 'CLEAR_COOKIES': {
+      clearTrackerCookies(msg.blockDomains).then(sendResponse);
+      return true;
+    }
+    case 'GET_BLOCKED': {
+      sendResponse({ blocked: [...STATE.blockedTrackers] });
+      break;
     }
     case MSG.CLEAR_SITE: {
       const host = msg.hostname || hostname;
@@ -199,7 +322,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-// ── Tab events → update badge ──────────────────────────────────────────────
+// ── Tab events ─────────────────────────────────────────────────────────────
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -221,4 +344,4 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 loadState();
-console.log('[Privacy Monitor] Service worker started.');
+console.log('[Privacy Monitor v2] Service worker started.');
